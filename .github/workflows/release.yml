@@ -1,0 +1,283 @@
+name: Build and Release
+
+on:
+    push:
+        tags:
+            - "v*" # Trigger on version tags like v1.0.0
+    workflow_dispatch: # Allow manual triggering
+        inputs:
+            version:
+                description: "Version to release"
+                required: false
+                default: ""
+                type: string
+
+permissions:
+    contents: write
+    packages: write
+
+jobs:
+    create-release:
+        runs-on: ubuntu-latest
+        steps:
+            - name: Checkout code
+              uses: actions/checkout@v4
+
+            # Check if tag already exists, is valid, and increment semver wise if not provided. Fail if provided and not valid or already exists.
+            - name: Determine Release Version
+              id: determine_version
+              run: |
+                  if [ -n "${{ github.event.inputs.version }}" ]; then
+                      VERSION="${{ github.event.inputs.version }}"
+                  else
+                      # Use the current tag that triggered this workflow
+                      VERSION=${GITHUB_REF#refs/tags/}
+                  fi
+                  echo "Determined version: $VERSION"
+                  # Validate version format (simple regex for vMAJOR.MINOR.PATCH)
+                  if ! [[ $VERSION =~ ^v[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
+                      echo "Error: Version '$VERSION' is not in valid format (vMAJOR.MINOR.PATCH)"
+                      exit 1
+                  fi
+                  # Check if tag exists and if release already exists
+                  if git rev-parse "$VERSION" >/dev/null 2>&1; then
+                      echo "Tag '$VERSION' already exists"
+                      # Check if a release already exists for this tag
+                      if gh release view "$VERSION" >/dev/null 2>&1; then
+                          echo "Error: Release for tag '$VERSION' already exists"
+                          exit 1
+                      else
+                          echo "Tag exists but no release found - will create release"
+                      fi
+                  else
+                      echo "Tag '$VERSION' does not exist - will be created by release"
+                  fi
+                  echo "version=$VERSION" >> $GITHUB_OUTPUT
+
+            - name: Create Release
+              id: create_release
+              env:
+                  GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+              run: |
+                  gh release create ${{ steps.determine_version.outputs.version }} \
+                    --title "Release ${{ steps.determine_version.outputs.version }}" \
+                    --generate-notes
+
+    build-linux:
+        needs: create-release
+        runs-on: ubuntu-latest
+        steps:
+            - name: Checkout code
+              uses: actions/checkout@v4
+
+            - name: Cache Swiftly installation
+              uses: actions/cache@v4
+              with:
+                  path: |
+                      ~/.local/share/swiftly
+                      swiftly-*.tar.gz
+                  key: swiftly-linux-${{ runner.arch }}-v2
+
+            - name: Cache Swift toolchain
+              uses: actions/cache@v4
+              with:
+                  path: ~/.local/share/swiftly/toolchains
+                  key: swift-toolchain-linux-${{ hashFiles('.swift-version') }}-${{ runner.arch }}-v2
+
+            - name: Cache APT packages
+              uses: actions/cache@v4
+              with:
+                  path: /var/cache/apt
+                  key: apt-cache-gtk4-${{ runner.os }}-v1
+                  restore-keys: |
+                      apt-cache-gtk4-${{ runner.os }}-
+
+            - name: Cache Swift build
+              uses: actions/cache@v4
+              with:
+                  path: .build
+                  key: swift-build-linux-${{ hashFiles('Package.swift', 'Sources/**/*.swift') }}-v1
+                  restore-keys: |
+                      swift-build-linux-
+
+            - name: Install Swiftly
+              run: |
+                  if [ ! -f "${SWIFTLY_HOME_DIR:-$HOME/.local/share/swiftly}/bin/swiftly" ]; then
+                      curl -O https://download.swift.org/swiftly/linux/swiftly-$(uname -m).tar.gz
+                      tar zxf swiftly-$(uname -m).tar.gz
+                      ./swiftly init --quiet-shell-followup
+                  fi
+                  . "${SWIFTLY_HOME_DIR:-$HOME/.local/share/swiftly}/env.sh"
+                  hash -r
+                  echo "${SWIFTLY_HOME_DIR:-$HOME/.local/share/swiftly}/bin" >> $GITHUB_PATH
+
+            - name: Install Swift using Swiftly
+              run: |
+                  # Source swiftly environment
+                  . "${SWIFTLY_HOME_DIR:-$HOME/.local/share/swiftly}/env.sh"
+
+                  # Read Swift version from .swift-version file
+                  SWIFT_VERSION=$(cat .swift-version)
+                  echo "Installing Swift version: $SWIFT_VERSION"
+
+                  # Install and use the specified Swift version (skip if already installed)
+                  if ! swiftly list | grep -q "$SWIFT_VERSION"; then
+                      swiftly install $SWIFT_VERSION
+                  fi
+                  swiftly use $SWIFT_VERSION
+
+            - name: Install GTK4 dependencies
+              run: |
+                  sudo apt-get update
+                  sudo apt-get install -y libgtk-4-dev pkg-config
+
+            - name: Configure and verify environment
+              run: |
+                  . "${SWIFTLY_HOME_DIR:-$HOME/.local/share/swiftly}/env.sh"
+                  ./configure.sh
+
+            - name: Get Release Version
+              id: get_version
+              run: |
+                  if [ -n "${{ github.event.inputs.version }}" ]; then
+                      VERSION="${{ github.event.inputs.version }}"
+                  else
+                      # Get the tag name from the GitHub ref
+                      VERSION=${GITHUB_REF#refs/tags/}
+                  fi
+                  echo "version=$VERSION" >> $GITHUB_OUTPUT
+                  echo "Release version: $VERSION"
+
+            - name: Build for Linux
+              run: |
+                  . "${SWIFTLY_HOME_DIR:-$HOME/.local/share/swiftly}/env.sh"
+                  swift build -c release
+
+            - name: Package Linux binary
+              run: |
+                  mkdir -p dist
+                  cp .build/release/notes-manager-desktop dist/
+                  tar -czf notes-manager-desktop-${{ steps.get_version.outputs.version }}-linux-x64.tar.gz -C dist notes-manager-desktop
+
+            - name: Upload Linux Release Asset
+              env:
+                  GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+              run: |
+                  gh release upload ${{ steps.get_version.outputs.version }} notes-manager-desktop-${{ steps.get_version.outputs.version }}-linux-x64.tar.gz
+
+    build-macos:
+        needs: create-release
+        runs-on: macos-latest
+        steps:
+            - name: Checkout code
+              uses: actions/checkout@v4
+
+            - name: Cache Swiftly installation
+              uses: actions/cache@v4
+              with:
+                  path: |
+                      ~/.swiftly
+                      swiftly.pkg
+                  key: swiftly-macos-${{ runner.arch }}-v2
+
+            - name: Cache Swift toolchain
+              uses: actions/cache@v4
+              with:
+                  path: |
+                      ~/.swiftly/toolchains
+                      ~/Library/Developer/Toolchains
+                  key: swift-toolchain-macos-${{ hashFiles('.swift-version') }}-${{ runner.arch }}-v2
+
+            - name: Cache Homebrew packages
+              uses: actions/cache@v4
+              with:
+                  path: |
+                      ~/Library/Caches/Homebrew
+                      /usr/local/Homebrew/Library/Homebrew/vendor/cache
+                      /opt/homebrew/Library/Homebrew/vendor/cache
+                  key: homebrew-gtk4-${{ runner.os }}-v1
+                  restore-keys: |
+                      homebrew-gtk4-${{ runner.os }}-
+
+            - name: Cache Swift build
+              uses: actions/cache@v4
+              with:
+                  path: .build
+                  key: swift-build-macos-${{ hashFiles('Package.swift', 'Sources/**/*.swift') }}-v1
+                  restore-keys: |
+                      swift-build-macos-
+
+            - name: Install Swiftly
+              run: |
+                  if [ ! -f "${SWIFTLY_HOME_DIR:-$HOME/.swiftly}/bin/swiftly" ]; then
+                      curl -O https://download.swift.org/swiftly/darwin/swiftly.pkg
+                      installer -pkg swiftly.pkg -target CurrentUserHomeDirectory
+                      ~/.swiftly/bin/swiftly init --quiet-shell-followup
+                  fi
+                  . "${SWIFTLY_HOME_DIR:-$HOME/.swiftly}/env.sh"
+                  hash -r
+                  echo "${SWIFTLY_HOME_DIR:-$HOME/.swiftly}/bin" >> $GITHUB_PATH
+
+            - name: Install Swift using Swiftly
+              run: |
+                  # Source swiftly environment
+                  . "${SWIFTLY_HOME_DIR:-$HOME/.swiftly}/env.sh"
+
+                  # Read Swift version from .swift-version file
+                  SWIFT_VERSION=$(cat .swift-version)
+                  echo "Installing Swift version: $SWIFT_VERSION"
+
+                  # Check if Swift version is already installed and working
+                  if swiftly list | grep -q "$SWIFT_VERSION"; then
+                      echo "Swift $SWIFT_VERSION found in swiftly list, testing if it works..."
+                      if swiftly use $SWIFT_VERSION && swift --version 2>/dev/null | grep -q "$SWIFT_VERSION"; then
+                          echo "Swift $SWIFT_VERSION is working correctly"
+                      else
+                          echo "Swift $SWIFT_VERSION installation appears corrupted, reinstalling..."
+                          swiftly uninstall $SWIFT_VERSION || true
+                          swiftly install $SWIFT_VERSION
+                          swiftly use $SWIFT_VERSION
+                      fi
+                  else
+                      echo "Swift $SWIFT_VERSION not found, installing..."
+                      swiftly install $SWIFT_VERSION
+                      swiftly use $SWIFT_VERSION
+                  fi
+
+            - name: Install GTK4 dependencies
+              run: |
+                  brew install gtk4 pkg-config
+
+            - name: Configure and verify environment
+              run: |
+                  . "${SWIFTLY_HOME_DIR:-$HOME/.swiftly}/env.sh"
+                  ./configure.sh
+
+            - name: Get Release Version
+              id: get_version
+              run: |
+                  if [ -n "${{ github.event.inputs.version }}" ]; then
+                      VERSION="${{ github.event.inputs.version }}"
+                  else
+                      # Get the tag name from the GitHub ref
+                      VERSION=${GITHUB_REF#refs/tags/}
+                  fi
+                  echo "version=$VERSION" >> $GITHUB_OUTPUT
+                  echo "Release version: $VERSION"
+
+            - name: Build for macOS
+              run: |
+                  . "${SWIFTLY_HOME_DIR:-$HOME/.swiftly}/env.sh"
+                  swift build -c release
+
+            - name: Package macOS binary
+              run: |
+                  mkdir -p dist
+                  cp .build/release/notes-manager-desktop dist/
+                  tar -czf notes-manager-desktop-${{ steps.get_version.outputs.version }}-macos-x64.tar.gz -C dist notes-manager-desktop
+
+            - name: Upload macOS Release Asset
+              env:
+                  GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+              run: |
+                  gh release upload ${{ steps.get_version.outputs.version }} notes-manager-desktop-${{ steps.get_version.outputs.version }}-macos-x64.tar.gz

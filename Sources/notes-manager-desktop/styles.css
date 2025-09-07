@@ -1,0 +1,122 @@
+/* GTK CSS for Notes Manager */
+
+/* Modern button styling */
+button.suggested-action {
+	background: linear-gradient(to bottom, #4a90e2, #357abd);
+	border: 1px solid #2e5f8a;
+	color: white;
+	border-radius: 6px;
+	padding: 8px 16px;
+	font-weight: 500;
+}
+
+button.suggested-action:hover {
+	background: linear-gradient(to bottom, #5ba0f2, #4a90e2);
+}
+
+button.destructive-action {
+	background: linear-gradient(to bottom, #e74c3c, #c0392b);
+	border: 1px solid #a93226;
+	color: white;
+	border-radius: 6px;
+	padding: 8px 16px;
+	font-weight: 500;
+}
+
+button.destructive-action:hover {
+	background: linear-gradient(to bottom, #f25c4c, #e74c3c);
+}
+
+/* Text styling */
+label.heading {
+	font-weight: 600;
+	font-size: 1.1em;
+}
+
+label.dim-label {
+	color: @insensitive_fg_color;
+	font-size: 0.9em;
+}
+
+/* Text view styling */
+textview.monospace {
+	font-family: "SF Mono", "Monaco", "Consolas", "Liberation Mono", monospace;
+	font-size: 11pt;
+	line-height: 1.4;
+}
+
+textview text {
+	background-color: @theme_base_color;
+	color: @theme_fg_color;
+	padding: 10px;
+}
+
+/* Entry styling */
+entry {
+	border-radius: 6px;
+	padding: 8px 12px;
+	border: 1px solid @borders;
+}
+
+entry:focus {
+	border: 2px solid @accent_color;
+}
+
+/* List styling */
+listbox {
+	background: @theme_base_color;
+	border-radius: 6px;
+}
+
+listbox row {
+	border-radius: 6px;
+	margin: 2px;
+	padding: 4px;
+}
+
+listbox row:hover {
+	background: alpha(@accent_color, 0.1);
+}
+
+listbox row:selected {
+	background: @accent_color;
+	color: @accent_fg_color;
+}
+
+/* Window styling */
+window {
+	background: @theme_bg_color;
+}
+
+headerbar {
+	background: linear-gradient(
+		to bottom,
+		@headerbar_bg_color,
+		shade(@headerbar_bg_color, 0.95)
+	);
+	border-bottom: 1px solid @borders;
+}
+
+/* Paned separator */
+paned separator {
+	background: @borders;
+	min-width: 1px;
+	min-height: 1px;
+}
+
+/* Scrolled window */
+scrolledwindow {
+	border-radius: 6px;
+	border: 1px solid @borders;
+}
+
+/* Message dialog */
+messagedialog .dialog-vbox {
+	padding: 20px;
+}
+
+messagedialog button {
+	padding: 8px 20px;
+	margin: 4px;
+	border-radius: 6px;
+}

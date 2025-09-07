@@ -1,0 +1,110 @@
+# Swift Package Manager
+.DS_Store
+/.build/
+/Packages/
+*.xcodeproj/
+xcuserdata/
+DerivedData/
+.swiftpm/configuration/registries.json
+.swiftpm/xcode/package.xcworkspace/contents.xcworkspacedata
+Package.resolved
+.netrc
+
+# Swift compiler files
+*.swiftdoc
+*.swiftmodule
+*.swiftsourceinfo
+
+# Xcode
+*.pbxuser
+*.mode1v3
+*.mode2v3
+*.perspectivev3
+*.xcuserstate
+*.xcscmblueprint
+*.xccheckout
+project.xcworkspace/
+build/
+*.moved-aside
+*.hmap
+*.ipa
+*.dSYM.zip
+*.dSYM
+
+# Environment and configuration
+.env
+.env.*
+!.env.example
+*.pem
+*.key
+*.crt
+
+# IDE and Editor files
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+Thumbs.db
+
+# Logs and runtime files
+*.log
+Logs/
+logs/
+*.pid
+*.seed
+*.pid.lock
+
+# Notes application data (uncomment if you don't want to track user notes in git)
+# Documents/NotesManager/
+
+# Temporary files
+*.tmp
+*.temp
+.tmp/
+.temp/
+
+# System files - macOS
+.DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+
+# System files - Windows
+Thumbs.db
+ehthumbs.db
+Desktop.ini
+$RECYCLE.BIN/
+*.lnk
+
+# System files - Linux
+*~
+.fuse_hidden*
+.directory
+.Trash-*
+.nfs*
+
+# Backup files
+*.bak
+*.backup
+*.orig
+*.rej
+
+# Archive files
+*.zip
+*.tar
+*.tar.gz
+*.tar.bz2
+*.rar
+*.7z
+
+# Coverage reports
+*.gcov
+*.gcda
+*.gcno
+lcov.info
+
+# Documentation build files
+docs/_build/
+site/

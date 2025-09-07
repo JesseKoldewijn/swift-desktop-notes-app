@@ -1,0 +1,12 @@
+[Desktop Entry]
+Name=Notes Manager
+Comment=A modern cross-platform notes application
+Exec=/home/jesse/wsl-projects/personal/swift/notes-manager-desktop/launch.sh
+Icon=accessories-text-editor
+Terminal=false
+Type=Application
+Categories=Office;TextEditor;Utility;
+StartupNotify=true
+StartupWMClass=notes-manager
+MimeType=text/plain;
+Keywords=notes;text;editor;writing;documents;
