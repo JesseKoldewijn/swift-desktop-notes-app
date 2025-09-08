@@ -2,7 +2,7 @@
 
 A modern cross-platform desktop notes application built with Swift
 
-## 📦 Status
+### 📦 Status
 
 <p>
     <a href="https://github.com/JesseKoldewijn/swift-desktop-notes-app/actions/workflows/ci.yml">
