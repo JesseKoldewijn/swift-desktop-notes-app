@@ -15,7 +15,32 @@ NC='\033[0m' # No Color
 # Configuration
 APP_NAME="Notes Manager Desktop"
 EXECUTABLE_NAME="notes-manager-desktop"
-VERSION=$(git describe --tags --always --dirty 2>/dev/null || echo "dev-$(git rev-parse --short HEAD 2>/dev/null || echo 'unknown')")DESCRIPTION="A desktop notes management application built with Swift and GTK4"
+
+# Get version with intelligent fallback
+get_version() {
+    local version
+    # Try to get version from git describe
+    version=$(git describe --tags --always --dirty 2>/dev/null)
+    
+    if [[ -z "$version" ]]; then
+        # No git info available, use fallback
+        version="1.0.0-dev-$(date +%Y%m%d)"
+    elif [[ ! "$version" =~ ^v?[0-9]+\.[0-9]+\.[0-9]+ ]]; then
+        # Version doesn't start with semver pattern (likely just a commit hash)
+        # Try to get the latest tag
+        local latest_tag=$(git describe --tags --abbrev=0 2>/dev/null)
+        if [[ -n "$latest_tag" ]]; then
+            version="$latest_tag-dev-$version"
+        else
+            version="1.0.0-dev-$version"
+        fi
+    fi
+    
+    echo "$version"
+}
+
+VERSION=$(get_version)
+DESCRIPTION="A desktop notes management application built with Swift and GTK4"
 AUTHOR="Jesse Koldewijn"
 HOMEPAGE="https://github.com/JesseKoldewijn/swift-desktop-notes-app"
 
@@ -123,6 +148,33 @@ get_arch() {
     esac
 }
 
+# Sanitize version for different package formats
+sanitize_version_for_deb() {
+    local version="$1"
+    # DEB versions must start with a digit
+    # Remove 'v' prefix, replace hyphens with dots, ensure it starts with a digit
+    version=$(echo "$version" | sed 's/^v//')
+    if [[ ! "$version" =~ ^[0-9] ]]; then
+        # If version doesn't start with digit (like just a commit hash), prefix with 0.0.0
+        version="0.0.0.$version"
+    fi
+    # Replace remaining hyphens with dots, replace 'dirty' with 'dev'
+    version=$(echo "$version" | sed 's/-/./g' | sed 's/dirty/dev/')
+    echo "$version"
+}
+
+sanitize_version_for_rpm() {
+    local version="$1"
+    # RPM versions have similar requirements to DEB
+    sanitize_version_for_deb "$version"
+}
+
+sanitize_version_for_arch() {
+    local version="$1"
+    # Arch packages: replace hyphens with dots, remove 'v' prefix, replace 'dirty' with 'dev'
+    echo "$version" | sed 's/^v//' | sed 's/-/./g' | sed 's/dirty/dev/'
+}
+
 OS=$(detect_os)
 ARCH=$(get_arch)
 DISTRO=""
@@ -223,10 +275,13 @@ create_deb_package() {
         cp "Sources/$EXECUTABLE_NAME/styles.css" "$deb_dir/usr/share/$EXECUTABLE_NAME/"
     fi
     
+    # Sanitize version for DEB packages
+    local deb_version=$(sanitize_version_for_deb "$VERSION")
+    
     # Create control file
     cat > "$deb_dir/DEBIAN/control" << EOF
 Package: $EXECUTABLE_NAME
-Version: $VERSION
+Version: $deb_version
 Section: utils
 Priority: optional
 Architecture: amd64
@@ -280,10 +335,13 @@ create_rpm_package() {
         local rpm_dir="$INSTALLER_DIR/rpm"
         mkdir -p "$rpm_dir"/{BUILD,RPMS,SOURCES,SPECS,SRPMS}
         
+        # Sanitize version for RPM packages
+        local rpm_version=$(sanitize_version_for_rpm "$VERSION")
+        
         # Create spec file
         cat > "$rpm_dir/SPECS/$EXECUTABLE_NAME.spec" << EOF
 Name: $EXECUTABLE_NAME
-Version: $VERSION
+Version: $rpm_version
 Release: 1%{?dist}
 Summary: $DESCRIPTION
 License: MIT
@@ -343,11 +401,14 @@ create_arch_package() {
         local arch_dir="$INSTALLER_DIR/arch"
         mkdir -p "$arch_dir"
         
+        # Sanitize version for Arch packages
+        local arch_version=$(sanitize_version_for_arch "$VERSION")
+        
         # Create PKGBUILD
         cat > "$arch_dir/PKGBUILD" << EOF
 # Maintainer: $AUTHOR
 pkgname=$EXECUTABLE_NAME
-pkgver=$VERSION
+pkgver=$arch_version
 pkgrel=1
 pkgdesc="$DESCRIPTION"
 arch=('x86_64')
@@ -514,6 +575,15 @@ create_macos_installer() {
 </plist>
 EOF
     
+    # Set proper permissions for macOS app bundle
+    chmod -R 755 "$app_dir"
+    chmod +x "$app_dir/Contents/MacOS/$EXECUTABLE_NAME"
+    
+    # Verify the app bundle structure
+    echo "DEBUG: macOS app bundle created at: $app_dir"
+    echo "DEBUG: App bundle contents:"
+    ls -laR "$app_dir" || echo "Failed to list app bundle contents"
+    
     echo "Drag $APP_NAME.app to your Applications folder" >> "$INSTALLER_DIR/README.txt"
     print_success "macOS app bundle created"
 }
@@ -543,8 +613,115 @@ EOF
 
 # Create tarball
 print_info "Creating distribution archive..."
-ARCHIVE_NAME="$EXECUTABLE_NAME-$VERSION-$BUILD_CONFIG-$OS$([ -n "$DISTRO" ] && echo "-$DISTRO")-$ARCH.tar.gz"
-(cd "$OUTPUT_DIR" && tar -czf "$ARCHIVE_NAME" "$(basename "$INSTALLER_DIR")")
+
+# Debug the archive name construction
+echo "DEBUG: EXECUTABLE_NAME=$EXECUTABLE_NAME"
+echo "DEBUG: VERSION=$VERSION" 
+echo "DEBUG: BUILD_CONFIG=$BUILD_CONFIG"
+echo "DEBUG: OS=$OS"
+echo "DEBUG: DISTRO=$DISTRO"
+echo "DEBUG: ARCH=$ARCH"
+
+echo "DEBUG: About to construct ARCHIVE_NAME"
+# Build archive name more safely
+if [[ -n "$DISTRO" ]]; then
+    ARCHIVE_NAME="$EXECUTABLE_NAME-$VERSION-$BUILD_CONFIG-$OS-$DISTRO-$ARCH.tar.gz"
+else
+    ARCHIVE_NAME="$EXECUTABLE_NAME-$VERSION-$BUILD_CONFIG-$OS-$ARCH.tar.gz"
+fi
+echo "DEBUG: Constructed ARCHIVE_NAME=$ARCHIVE_NAME"
+
+# Use a more robust tar command that works on both Linux and macOS
+echo "DEBUG: Starting archive creation process"
+echo "DEBUG: OUTPUT_DIR=$OUTPUT_DIR"
+echo "DEBUG: INSTALLER_DIR=$INSTALLER_DIR"
+
+# Check if directories exist before proceeding
+echo "DEBUG: Checking if OUTPUT_DIR exists: $OUTPUT_DIR"
+if [[ ! -d "$OUTPUT_DIR" ]]; then
+    print_error "Output directory does not exist: $OUTPUT_DIR"
+    exit 1
+fi
+echo "DEBUG: OUTPUT_DIR exists"
+
+echo "DEBUG: Checking if INSTALLER_DIR exists: $INSTALLER_DIR"
+if [[ ! -d "$INSTALLER_DIR" ]]; then
+    print_error "Installer directory does not exist: $INSTALLER_DIR"
+    exit 1
+fi
+echo "DEBUG: INSTALLER_DIR exists"
+
+echo "DEBUG: Both directories exist, proceeding with cd"
+
+# Change to output directory
+echo "DEBUG: About to change to output directory: $OUTPUT_DIR"
+if cd "$OUTPUT_DIR"; then
+    echo "DEBUG: Successfully changed to output directory: $(pwd)"
+else
+    print_error "Failed to change to output directory: $OUTPUT_DIR"
+    exit 1
+fi
+echo "DEBUG: Changed to output directory: $(pwd)"
+echo "DEBUG: Contents of output directory:"
+ls -la 2>&1
+
+# On macOS, remove any .DS_Store files that might cause issues
+if [[ "$OS" == "macos" ]]; then
+    echo "DEBUG: Cleaning up .DS_Store files on macOS"
+    find "$(basename "$INSTALLER_DIR")" -name ".DS_Store" -delete 2>/dev/null || true
+fi
+
+echo "DEBUG: Installer directory basename: $(basename "$INSTALLER_DIR")"
+echo "DEBUG: Contents of installer directory:"
+ls -la "$(basename "$INSTALLER_DIR")" 2>&1 || echo "Failed to list installer directory"
+
+# Use different tar approaches for different platforms
+if [[ "$OS" == "macos" ]]; then
+    # macOS-specific tar command that excludes extended attributes and handles app bundles better
+    echo "DEBUG: Using macOS tar with extended attribute exclusion"
+    echo "DEBUG: tar --exclude=._* --exclude=.DS_Store -czf $ARCHIVE_NAME $(basename "$INSTALLER_DIR")"
+    
+    if tar --exclude="._*" --exclude=".DS_Store" -czf "$ARCHIVE_NAME" "$(basename "$INSTALLER_DIR")" 2>&1; then
+        echo "DEBUG: macOS tar succeeded"
+        print_success "Archive created successfully: $ARCHIVE_NAME"
+    else
+        tar_exit_code=$?
+        print_error "macOS tar failed with exit code $tar_exit_code"
+        echo "DEBUG: Trying alternative tar command without exclusions..."
+        echo "DEBUG: tar -czf $ARCHIVE_NAME $(basename "$INSTALLER_DIR")"
+        
+        # Try without extended attribute exclusion
+        if tar -czf "$ARCHIVE_NAME" "$(basename "$INSTALLER_DIR")" 2>&1; then
+            print_success "Archive created with alternative tar command: $ARCHIVE_NAME"
+        else
+            tar_exit_code=$?
+            print_error "All tar attempts failed with exit code $tar_exit_code"
+            echo "DEBUG: Directory exists check:"
+            ls -la "$(basename "$INSTALLER_DIR")" 2>&1 || echo "Directory listing failed"
+            echo "DEBUG: Current working directory: $(pwd)"
+            echo "DEBUG: All files in current directory:"
+            ls -la 2>&1
+            cd - > /dev/null
+            exit $tar_exit_code
+        fi
+    fi
+else
+    # Linux and other platforms
+    echo "DEBUG: Using standard tar command"
+    if tar -czf "$ARCHIVE_NAME" "$(basename "$INSTALLER_DIR")"; then
+        echo "DEBUG: Standard tar succeeded"
+        print_success "Archive created successfully: $ARCHIVE_NAME"
+    else
+        tar_exit_code=$?
+        print_error "tar command failed with exit code $tar_exit_code"
+        ls -la "$(basename "$INSTALLER_DIR")" || echo "Directory listing failed"
+        cd - > /dev/null
+        exit $tar_exit_code
+    fi
+fi
+
+# Return to original directory
+cd - > /dev/null
 
 print_success "Installer created successfully!"
 echo ""

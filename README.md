@@ -2,18 +2,16 @@
 
 A modern cross-platform desktop notes application built with Sw### 🎯 Alternative Scripts
 
-The project includes convenient scripts:
+## 📦 Status
 
-```bash
-# Build with optimizations
-./build.sh
-
-# Launch the application
-./launch.sh
-
-# Create a release build
-./create-release.sh
-```
+<p>
+    <a href="https://github.com/JesseKoldewijn/swift-desktop-notes-app/actions/workflows/ci.yml">
+        <img src="https://github.com/JesseKoldewijn/swift-desktop-notes-app/actions/workflows/ci.yml/badge.svg" alt="CI">
+    </a>
+    <a href="https://github.com/JesseKoldewijn/swift-desktop-notes-app/actions/workflows/release.yml">
+        <img src="https://github.com/JesseKoldewijn/swift-desktop-notes-app/actions/workflows/release.yml/badge.svg" alt="Build and Release">
+    </a>
+</p>
 
 ### 📦 Creating Installers
 
@@ -51,17 +49,6 @@ The installer script automatically:
 -   Generates installation instructions
 
 ## 📱 Application Overview. This application provides a native desktop experience with a clean, intuitive interface for managing your personal notes.
-
-## 📦 Status
-
-<p>
-    <a href="https://github.com/JesseKoldewijn/swift-desktop-notes-app/actions/workflows/ci.yml">
-        <img src="https://github.com/JesseKoldewijn/swift-desktop-notes-app/actions/workflows/ci.yml/badge.svg" alt="CI">
-    </a>
-    <a href="https://github.com/JesseKoldewijn/swift-desktop-notes-app/actions/workflows/release.yml">
-        <img src="https://github.com/JesseKoldewijn/swift-desktop-notes-app/actions/workflows/release.yml/badge.svg" alt="Build and Release">
-    </a>
-</p>
 
 ## 🎯 Features
 
@@ -268,6 +255,33 @@ swift build -c release
 ./create-release.sh  # Release build
 ```
 
+### CI/CD Integration
+
+The project features a robust CI/CD pipeline with platform-specific optimizations:
+
+#### **Development Workflow**
+
+-   **Continuous Integration**: Automated testing on every PR/push
+-   **Multi-platform Support**: Ubuntu, Fedora, Arch Linux, and macOS
+-   **Smart Caching**: Swift toolchain and build artifacts cached for faster builds
+-   **Native Package Management**: Uses each platform's preferred package manager
+
+#### **Swift Toolchain Management**
+
+-   **Version Consistency**: All builds respect the project's `.swift-version` file
+-   **Platform-Optimized Installation**:
+    -   **Ubuntu/macOS**: Pre-compiled Swiftly binaries (fastest)
+    -   **Fedora**: Copr community repository with source fallback
+    -   **Arch**: AUR packages via `yay` (most native)
+-   **Automatic Fallbacks**: If package managers fail, builds from source
+
+#### **Release Automation**
+
+-   **Semantic Versioning**: Tag-triggered releases (`v1.0.0`, `v1.0.1`, etc.)
+-   **Multi-format Packages**: `.deb`, `.rpm`, `.pkg.tar.zst`, and portable tarballs
+-   **GitHub Integration**: Automatic asset upload to GitHub Releases
+-   **Cross-platform Consistency**: Same Swift version across all platforms
+
 ### Code Architecture
 
 **main.swift** - GTK4 Application:
@@ -327,11 +341,11 @@ swift package clean && swift build
 
 ## 🚀 Automated Releases
 
-This project uses GitHub Actions for automated cross-platform builds and releases.
+This project uses GitHub Actions for automated cross-platform builds and releases across all supported Linux distributions and macOS.
 
 ### Creating a Release
 
-Create a new release with cross-platform binaries:
+Create a new release with comprehensive platform coverage:
 
 ```bash
 # Tag a new version
@@ -341,21 +355,114 @@ git push origin v1.0.0
 
 GitHub Actions will automatically:
 
--   ✅ Build for Linux and macOS
--   ✅ Create a new GitHub release
--   ✅ Upload binaries as release assets
+-   ✅ Build for all supported platforms
+-   ✅ Create platform-specific installers
+-   ✅ Generate distribution packages
+-   ✅ Upload all assets to GitHub Release
+
+### Supported Platforms & Package Formats
+
+**Linux Distributions:**
+
+-   **Ubuntu**: `.deb` packages + tarballs
+-   **Debian**: `.deb` packages + tarballs
+-   **Fedora**: `.rpm` packages + tarballs
+-   **Arch Linux**: `.pkg.tar.zst` packages + tarballs
+-   **openSUSE**: `.rpm` packages + tarballs
+-   **Alpine Linux**: Portable tarballs with install scripts
+
+**macOS:**
+
+-   **macOS**: `.app` bundles + tarballs
 
 ### Release Assets
 
-Each release includes:
+Each release includes comprehensive platform coverage:
 
--   `notes-manager-desktop-linux-x64.tar.gz` - Linux binary
--   `notes-manager-desktop-macos-x64.tar.gz` - macOS binary
+**Linux Packages:**
+
+-   `notes-manager-desktop-{version}-ubuntu.deb` - Ubuntu/Debian package
+-   `notes-manager-desktop-{version}-fedora.rpm` - Fedora/RHEL package
+-   `notes-manager-desktop-{version}-opensuse.rpm` - openSUSE package
+-   `notes-manager-desktop-{version}-arch.pkg.tar.zst` - Arch Linux package
+
+**Distribution Tarballs:**
+
+-   `notes-manager-desktop-{version}-linux-ubuntu-x64.tar.gz` - Ubuntu binary
+-   `notes-manager-desktop-{version}-linux-debian-x64.tar.gz` - Debian binary
+-   `notes-manager-desktop-{version}-linux-fedora-x64.tar.gz` - Fedora binary
+-   `notes-manager-desktop-{version}-ubuntu.deb` - Ubuntu/Debian package
+-   `notes-manager-desktop-{version}-fedora.rpm` - Fedora/RHEL package
+-   `notes-manager-desktop-{version}-arch.pkg.tar.zst` - Arch Linux package
+-   `notes-manager-desktop-{version}-linux-ubuntu-x64.tar.gz` - Ubuntu binary
+-   `notes-manager-desktop-{version}-linux-fedora-x64.tar.gz` - Fedora binary
+-   `notes-manager-desktop-{version}-linux-arch-x64.tar.gz` - Arch Linux binary
+-   `notes-manager-desktop-{version}-macos-arm64.tar.gz` - macOS binary (Apple Silicon)
+
+### Installation Instructions
+
+Each release provides multiple installation options per platform:
+
+**Package Installation (Recommended):**
+
+```bash
+# Ubuntu/Debian
+sudo dpkg -i notes-manager-desktop-{version}-ubuntu.deb
+
+# Fedora/RHEL
+sudo rpm -i notes-manager-desktop-{version}-fedora.rpm
+
+# Arch Linux
+sudo pacman -U notes-manager-desktop-{version}-arch.pkg.tar.zst
+```
+
+**Manual Installation:**
+
+```bash
+# Download and extract tarball for your distribution
+tar -xzf notes-manager-desktop-{version}-linux-{distro}-x64.tar.gz
+cd notes-manager-desktop-{version}-release
+./install.sh
+```
+
+**Supported Platforms:**
+
+-   ✅ **Ubuntu 20.04+** - Native `.deb` packages + portable tarballs
+-   ✅ **Fedora/RHEL** - Native `.rpm` packages + portable tarballs
+-   ✅ **Arch Linux** - Native `.pkg.tar.zst` packages + portable tarballs
+-   ✅ **macOS** - Universal app bundles for Apple Silicon
 
 ### CI/CD Workflows
 
--   **CI Workflow**: Runs on every push/PR to main/develop branches
--   **Release Workflow**: Triggered by version tags (`v*`) for automated releases
+Our automated CI/CD pipeline ensures reliable builds across multiple platforms:
+
+#### **CI Workflow**
+
+Runs on every push/PR to main/develop branches:
+
+-   **Ubuntu**: Uses pre-compiled Swiftly binary with caching
+-   **Fedora**: Installs Swiftly via Copr repository (fallback to source build)
+-   **Arch Linux**: Installs Swiftly from AUR using `yay` package manager
+-   **macOS**: Uses pre-compiled Swiftly installer with Homebrew dependencies
+
+#### **Release Workflow**
+
+Triggered by version tags (`v*`) for automated releases:
+
+-   **Cross-platform**: Builds for Ubuntu, Fedora, Arch Linux, and macOS
+-   **Native Package Managers**: Uses distribution-specific package managers where possible
+-   **Automatic Packaging**: Creates `.deb`, `.rpm`, `.pkg.tar.zst`, and `.tar.gz` archives
+-   **GitHub Releases**: Automatically uploads all build artifacts
+-   **Version Management**: Respects `.swift-version` file for consistent Swift toolchain
+
+#### **Swiftly Installation Strategy**
+
+Each distribution uses the most appropriate installation method:
+
+-   **Ubuntu/macOS**: Pre-compiled binaries (fast, cached)
+-   **Fedora**: Copr community repository → source build fallback
+-   **Arch Linux**: AUR package via `yay` → native package management
+-   **All platforms**: Respect project's `.swift-version` for consistency
 
 ## 🐛 Troubleshooting
 

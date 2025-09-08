@@ -89,6 +89,15 @@ jobs:
                   . "${SWIFTLY_HOME_DIR:-$HOME/.local/share/swiftly}/env.sh"
                   swift build -c release
 
+            - name: Test packaging flow
+              run: |
+                  . "${SWIFTLY_HOME_DIR:-$HOME/.local/share/swiftly}/env.sh"
+                  chmod +x create-installer.sh
+                  ./create-installer.sh -c debug
+                  # Verify that packaging creates the expected files
+                  ls -la .packaged/
+                  [ -f .packaged/notes-manager-desktop-*-debug-linux-*.tar.gz ]
+
     test-macos:
         runs-on: macos-latest
         steps:
@@ -185,3 +194,12 @@ jobs:
               run: |
                   . "${SWIFTLY_HOME_DIR:-$HOME/.swiftly}/env.sh"
                   swift build -c release
+
+            - name: Test packaging flow
+              run: |
+                  . "${SWIFTLY_HOME_DIR:-$HOME/.swiftly}/env.sh"
+                  chmod +x create-installer.sh
+                  ./create-installer.sh -c debug
+                  # Verify that packaging creates the expected files
+                  ls -la .packaged/
+                  [ -f .packaged/notes-manager-desktop-*-debug-macos-*.tar.gz ]
