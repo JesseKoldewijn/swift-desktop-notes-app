@@ -1,6 +1,6 @@
 # Notes Manager Desktop
 
-A modern cross-platform desktop notes application built with Sw### 🎯 Alternative Scripts
+A modern cross-platform desktop notes application built with Swift
 
 ## 📦 Status
 
