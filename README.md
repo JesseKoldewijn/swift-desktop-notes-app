@@ -1,6 +1,56 @@
 # Notes Manager Desktop
 
-A modern cross-platform desktop notes application built with Swift 6.0 and GTK4. This application provides a native desktop experience with a clean, intuitive interface for managing your personal notes.
+A modern cross-platform desktop notes application built with Sw### 🎯 Alternative Scripts
+
+The project includes convenient scripts:
+
+```bash
+# Build with optimizations
+./build.sh
+
+# Launch the application
+./launch.sh
+
+# Create a release build
+./create-release.sh
+```
+
+### 📦 Creating Installers
+
+The project includes an automated installer creation script that detects your OS and Linux distribution to create appropriate installation packages:
+
+```bash
+# Create release installer (default)
+./create-installer.sh
+
+# Create debug installer
+./create-installer.sh -c debug
+
+# Create installer in custom directory
+./create-installer.sh -c release -o /path/to/packaged
+
+# Build and create installer in one step
+./build-and-package.sh
+```
+
+**Supported Package Formats:**
+
+-   **Linux (Debian/Ubuntu)**: `.deb` packages
+-   **Linux (Red Hat/Fedora)**: `.rpm` packages
+-   **Linux (Arch)**: `.pkg.tar.zst` packages
+-   **Linux (Generic)**: Portable installer with install/uninstall scripts
+-   **macOS**: `.app` bundle
+-   **All platforms**: Compressed `.tar.gz` archive
+
+The installer script automatically:
+
+-   Detects your OS and distribution
+-   Creates platform-specific packages
+-   Includes desktop integration files
+-   Bundles all required resources
+-   Generates installation instructions
+
+## 📱 Application Overview. This application provides a native desktop experience with a clean, intuitive interface for managing your personal notes.
 
 ## 📦 Status
 

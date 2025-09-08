@@ -1,6 +1,7 @@
 # Swift Package Manager
 .DS_Store
 /.build/
+/.packaged/
 /Packages/
 *.xcodeproj/
 xcuserdata/
@@ -14,6 +15,7 @@ Package.resolved
 *.swiftdoc
 *.swiftmodule
 *.swiftsourceinfo
+*.desktop
 
 # Xcode
 *.pbxuser
